@@ -4,11 +4,12 @@ My personal version of the classes utilized in the original module of the author
 '''
 from thinkbayes import *  # just take all to avoid errors
 from typing import List, Tuple, Dict, Any
+import matplotlib.pyplot as plt
 
-
+#######################  classes  #######################
 class Suite(Pmf):
     """
-    Represents a suite of hypotheses and their probabilities.
+    Represents a suite of hypotheses and their probabilities (as PMFs).
     To be inherited by another class for a specicif problem, where the Likelihood
     method needs to be specified.
     """
@@ -30,6 +31,61 @@ class Suite(Pmf):
         print(f"Distribution of probabilites now: \n{'---'*15}\n")
         for hypo, prob in sorted(self.Items()):
             print(f"Hypothesis {hypo}: {prob:.4f}")
+            
+    def PlotProb(self):
+        """ Plot the current probability distribution """
+        fig, ax = plt.subplots()
+        ax.plot(self.GetDict().keys(), self.GetDict().values(), label='pmf')
+        ax.autoscale(tight=True)
+        ax.locator_params(nbins=3)    
+        ax.set_xlabel('hypotheses', fontsize=12)    
+        ax.set_ylabel('probability', fontsize=12)    
+        ax.set_title('Current probability distribution', fontsize=12)
+        plt.legend()
+        return ax
+    
+    def PlotMean(self):
+        """ Plots the mean of the distribution on top of it, and returns its value """
+        ax = self.PlotProb()
+        self.MeanProb = self.Mean()
+        ax.set_title(f"Mean: {self.MeanProb:.4f}")
+        ax.axvline(self.MeanProb, color='red', label='mean')
+        plt.legend()
+            
+
+class Train(Suite):
+    """ Suite for dealing with distribution for the Locomotive Problem """
+    def Likelihood(self, data, hypo):
+        if hypo < data:
+            return 0.0  # impossible to see a train with number i if there are fewer than i trains
+        else:
+            return 1.0 / hypo  # Likelihood to find train i in a population of k trains (k > i)
+        
+    def PlotProb(self):
+        """ Plot the current probability distribution """
+        import matplotlib.pyplot as plt
+        fig, ax = plt.subplots()
+        ax.plot(self.GetDict().keys(), self.GetDict().values(), label='pmf')
+        ax.autoscale(tight=True)
+        ax.locator_params(nbins=3)    
+        ax.set_xlabel('hypotheses', fontsize=12)    
+        ax.set_ylabel('probability', fontsize=12)    
+        ax.set_title('Current probability distribution', fontsize=12)
+        plt.legend()
+        return ax
+    
+    def PlotMean(self):
+        """ Plots the mean of the distribution on top of it, and returns its value """
+        ax = self.PlotProb()
+        self.MeanProb = self.Mean()
+        ax.set_title(f"Mean: {self.MeanProb:.4f}")
+        ax.axvline(self.MeanProb, color='red', label='mean')
+        plt.legend()
+        return self.MeanProb
+    
+    def GetMaxProb(self):
+        """ Returns the maximum value of all the distribution """
+        return max(self.GetDict().values())
 
 
 class TrainPowerLawPrior(Train):  # we inherit from our previous class, just to change the init
@@ -42,6 +98,8 @@ class TrainPowerLawPrior(Train):  # we inherit from our previous class, just to 
             self.Set(hypo, hypo**(- alpha))  # assign a power-law probab distribution at first
         self.Normalize()
 
+
+#######################  functions  #######################
 def init_model_make_posterior(upper_bound: float, observed_data: float, constructor):
     """ 
     Makes and updates a Suite.
@@ -79,7 +137,22 @@ def compare_posteriors_for_same_data(constructors: List, labels: List[str], uppe
         ax.set_xlabel("Number of trains"); ax.set_ylabel("Probability")
         ax.legend(fontsize=11)
         
-        
+
+def percentile(pmf, percentage: float):
+    """ Computes the 'percentage' percentile of the PMF distribution """
+    total = 0
+    for val, prob in pmf.Items():
+        total += prob
+        if total >= percentage / 100.0:
+            return val
+
+
+def credible_interval(pmf, percentage: float = 90.0):
+    """ Computes the 'percentage'% credible interval for the given distribution """
+    tail = (100 - percentage) / 2
+    return percentile(pmf, tail), percentile(pmf, 100 - tail)
+
+
 def plot_distrib_with_CI(pmf, CI_level: float = 90.0, title=""):
     """ Plots the credible interval specified on top of the distribution """
     mean = pmf.MeanProb
