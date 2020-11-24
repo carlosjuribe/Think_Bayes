@@ -3,6 +3,8 @@ By: Carlos Jiménez Uribe
 My personal version of the classes utilized in the original module of the author, "thinkbayes.py"
 '''
 from thinkbayes import *  # just take all to avoid errors
+from typing import List, Tuple, Dict, Any
+
 
 class Suite(Pmf):
     """
@@ -29,8 +31,68 @@ class Suite(Pmf):
         for hypo, prob in sorted(self.Items()):
             print(f"Hypothesis {hypo}: {prob:.4f}")
 
-            
-            
+
+class TrainPowerLawPrior(Train):  # we inherit from our previous class, just to change the init
+    """ 
+    Suite for dealing with distribution for the Locomotive Problem, assuming a Power-Law prior
+    """
+    def __init__(self, hypos, alpha=1.0):
+        Pmf.__init__(self)
+        for hypo in hypos:
+            self.Set(hypo, hypo**(- alpha))  # assign a power-law probab distribution at first
+        self.Normalize()
+
+def init_model_make_posterior(upper_bound: float, observed_data: float, constructor):
+    """ 
+    Makes and updates a Suite.
+    :param upper_bound: maximum number of expected trains (possibilities)
+    :param observed_data: new train number observed
+    :param constructor: a class that contains a LikeLihood function, inherited from Suite
+    """
+    hypos = range(1, upper_bound + 1)
+    suite = constructor(hypos)
+    suite.name = f"upper_bound_{upper_bound}"
+    
+    for obs in observed_data:
+        suite.Update(obs)
+    return suite
+
+
+def compare_posteriors_for_same_data(constructors: List, labels: List[str], upper_bound: float, 
+                                     observed_data: List[float],):
+    """ 
+    Runs the analysis with two different priors and compares them 
+    :param constructors: list of classes that contain a LikeLihood function, inherited from Suite
+    :param labels: names for those constructors
+    :param upper_bound: maximum number of expected trains (possibilities)
+    :param observed_data: list of new train numbers observed
+    """
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for constructor, label in zip(constructors, labels):
+        suite = init_model_make_posterior(upper_bound, observed_data, constructor)
+        suite.name = label
+        suite_dict = suite.GetDict()
+        ax.plot(suite_dict.keys(), suite_dict.values(), label=label)
+        ax.autoscale(tight=True, axis='both')
+        ax.annotate(f"New datapoints observed: {observed_data}", (600, 0.01) )
+        ax.set_title("Comparison of posteriors for different priors and same data")
+        ax.set_xlabel("Number of trains"); ax.set_ylabel("Probability")
+        ax.legend(fontsize=11)
+        
+        
+def plot_distrib_with_CI(pmf, CI_level: float = 90.0, title=""):
+    """ Plots the credible interval specified on top of the distribution """
+    mean = pmf.MeanProb
+    CI = credible_interval(pmf, percentage=CI_level)
+    ax = pmf.PlotProb()
+    ax.set_title(f"Current Distribution with {CI_level}% credible Intervals\n{title}")
+    ax.axvline(mean, color='red', label='mean')
+    ax.axvspan(CI[0], CI[1], alpha=0.3, color='red', label=f"{CI_level}% CI")
+    ax.annotate(f"Mean: {mean:.0f}", (750, 0.015), color='darkred')
+    ax.legend(fontsize=11)
+    
+
+        
 ###################### from the original module ############################
 # class Pmf(_DictWrapper):
 #     """Represents a probability mass function.
