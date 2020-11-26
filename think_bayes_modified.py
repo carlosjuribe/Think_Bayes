@@ -134,7 +134,7 @@ def compare_posteriors_for_same_data(constructors: List, labels: List[str], uppe
         ax.autoscale(tight=True, axis='both')
         ax.annotate(f"New datapoints observed: {observed_data}", (600, 0.01) )
         ax.set_title("Comparison of posteriors for different priors and same data")
-        ax.set_xlabel("Number of trains"); ax.set_ylabel("Probability")
+        ax.set_xlabel("Possible values"); ax.set_ylabel("Probability")
         ax.legend(fontsize=11)
         
 
@@ -165,7 +165,31 @@ def plot_distrib_with_CI(pmf, CI_level: float = 90.0, title=""):
     ax.legend(fontsize=11)
     
 
+def compare_distributions(suites: List, labels=['prior1', 'prior2']):
+    """
+    Given a list of suites, plots each current distribution on the same plot, for comparison 
+    """
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for suite, label in zip(suites, labels):
+        suite_dict = suite.GetDict()
+        ax.plot(suite_dict.keys(), suite_dict.values(), label=label)
+        ax.autoscale(tight=True, axis='x')
+        ax.set_title("Comparison of distributions", fontsize=14)
+        ax.set_xlabel("Possible values", fontsize=12); ax.set_ylabel("Probability (now)")
+        ax.legend(fontsize=11)
         
+        
+def summary_distributions(suites: List, labels=['prior1', 'prior2']):
+    """ Given a list of suites, prints out relevant point estimates for each suite """
+    for suite, label in zip(suites, labels):
+        mean = suite.Mean()
+        median = percentile(suite, 50)
+        CI_90 = credible_interval(suite, 90)
+        print(f"\n{'---'*20}\nSummary for suite: {label}\n"
+               f" - Mean: {mean:0.2f}\n - Median: {median}\n - 90%-CI: {CI_90}")
+        
+        
+
 ###################### from the original module ############################
 # class Pmf(_DictWrapper):
 #     """Represents a probability mass function.
